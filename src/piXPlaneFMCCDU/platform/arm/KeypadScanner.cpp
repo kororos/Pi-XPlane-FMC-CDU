@@ -24,6 +24,7 @@
 #include <iostream>
 #include <iomanip>
 #include <thread>
+#include <unistd.h>
 
 #include "KeypadScanner.h"
 #include "../../FMCManager.h"
@@ -160,6 +161,11 @@ void KeypadScanner::mainLoop() {
 				FMCManager::getInstance()->keyReleaseEvent((int)(pressedRow+1), (int)(pressedCol+1));
 			}
 		}
+
+		// Pause between full scans. Without this the loop (whose only
+		// delays are wiringPi's busy-waiting delayMicroseconds) keeps a CPU
+		// core at 100%. 5 ms still gives ~200 scans per second.
+		usleep(5000);
 
 	}
 	cerr << "Finished KeypadScanner::mainLoop" << endl;

@@ -114,7 +114,9 @@ void RotaryEncScanner::mainLoop() {
             prevSeq = seq;
             FMCManager::getInstance()->rotaryEncTurnEvent(count, change);
         }
-        usleep(100);		
+        // 1 ms is fast enough for a hand-turned encoder and avoids
+        // spinning the CPU (was 100 us).
+        usleep(1000);		
 	}
 	cerr << "Finished RotaryEncScanner::mainLoop" << endl;
 }
