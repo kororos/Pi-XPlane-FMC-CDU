@@ -29,6 +29,7 @@
 #include "FMCManager.h"
 
 #include "Screen.h"
+#include "Version.h"
 #include "platform/KeypadScanner.h"
 // #if defined(__x86_64__)
 // #include "KeyboardScanner.h"
@@ -46,7 +47,12 @@ using namespace std;
 
 int main(int argc, char * argv[]) {
 
-	syslog (LOG_INFO, "=== PiXPlaneFMCCDU is starting. ===");
+	if (argc > 1 && (string(argv[1]) == "--version" || string(argv[1]) == "-v")) {
+		cout << "piXPlaneFMCCDU " << FULLVERSION << endl;
+		return 0;
+	}
+
+	syslog (LOG_INFO, "=== PiXPlaneFMCCDU %s is starting. ===", FULLVERSION);
 
 	// initialize wiringPi
 	wiringPiSetup ();

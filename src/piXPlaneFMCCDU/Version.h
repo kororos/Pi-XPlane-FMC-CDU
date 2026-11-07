@@ -24,6 +24,21 @@
 #define PIXPLANEFMCCDU_VERSION_H_
 
 #define MAJORVERSION "1"
+
+// The CMake build generates GitVersion.h with the git commit it was built
+// from, so the splash screen shows e.g. "Ver 1.0-14b028e".
+#if defined(__has_include)
+#if __has_include("GitVersion.h")
+#include "GitVersion.h"
+#endif
+#endif
+
+#ifdef GIT_VERSION
+#define MINORVERSION "0-" GIT_VERSION
+#else
 #define MINORVERSION "0-xxxxxxxx"
+#endif
+
+#define FULLVERSION MAJORVERSION "." MINORVERSION
 
 #endif /* PIXPLANEFMCCDU_VERSION_H_ */

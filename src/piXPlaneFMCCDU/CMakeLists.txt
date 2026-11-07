@@ -39,5 +39,32 @@ else()
     target_link_libraries(pi-FMC wiringPi)
 endif()
 
+# Built under the name the Pi's service runs.
+set_target_properties(pi-FMC PROPERTIES OUTPUT_NAME piXPlaneFMCCDU)
 
-    install(TARGETS pi-FMC RUNTIME)
+# Version: GitVersion.h with the current git commit, regenerated at every
+# build (only rewritten when it changes).
+set(GITVERSION_DIR ${CMAKE_BINARY_DIR}/generated)
+add_custom_target(gitversion
+    COMMAND ${CMAKE_COMMAND} -DSRC_DIR=${PROJECT_SOURCE_DIR}
+            -DOUT_FILE=${GITVERSION_DIR}/GitVersion.h
+            -P ${PROJECT_SOURCE_DIR}/cmake/GitVersion.cmake
+    BYPRODUCTS ${GITVERSION_DIR}/GitVersion.h
+    COMMENT "Checking git version")
+add_dependencies(pi-FMC gitversion)
+target_include_directories(pi-FMC PRIVATE ${GITVERSION_DIR})
+
+# Hardware test programs (LEDs and keypad)
+foreach(_test testFMCLED testFMCKeypad)
+    add_executable(${_test} ${PROJECT_SOURCE_DIR}/src/${_test}/${_test}.cpp)
+    if(PLATFORM STREQUAL "x86")
+        target_include_directories(${_test} BEFORE PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/platform/x86)
+    else()
+        target_link_libraries(${_test} wiringPi)
+    endif()
+endforeach()
+
+# 'make install' (on the Pi) / deploy.sh (from a cross-build machine)
+install(TARGETS pi-FMC testFMCLED testFMCKeypad RUNTIME DESTINATION bin)
+install(FILES ${PROJECT_SOURCE_DIR}/root/etc/systemd/system/piXPlaneFMCCDU.service
+        DESTINATION /etc/systemd/system)

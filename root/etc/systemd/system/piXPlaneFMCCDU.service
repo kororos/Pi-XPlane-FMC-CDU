@@ -1,14 +1,14 @@
 [Unit]
-Description=Start PiXPlaneFMCCDU
+Description=Pi-XPlane-FMC-CDU
 Wants=network-online.target
 After=network-online.target
 
 [Service]
-Type=Simple
-ExecStart=/usr/bin/nohup /usr/bin/piXPlaneFMCCDU &
-ExecStop=
+Type=simple
+ExecStart=/usr/bin/piXPlaneFMCCDU
+# Restart after a crash, but not after "<Exit" on the main menu (clean exit).
+Restart=on-failure
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
-
-
