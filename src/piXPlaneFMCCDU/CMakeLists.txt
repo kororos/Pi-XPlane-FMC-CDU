@@ -4,7 +4,9 @@ find_package(Threads REQUIRED)
 
 
 find_package(SDL2 REQUIRED)
-include_directories("/home/lefteris/Projects/pi/rootfs/usr/include" ${SDL2_INCLUDE_DIRS} )
+# Pi headers/libraries come from the toolchain file (CMAKE_SYSROOT) when
+# cross-compiling, so no hard-coded rootfs path here.
+include_directories(${SDL2_INCLUDE_DIRS})
 
 if(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
     message(STATUS "Building for x86_64 architecture")
@@ -27,9 +29,15 @@ target_link_libraries(pi-FMC
     z 
     png 
     XPlaneUDPClient 
-    wiringPi 
     XPlaneExtPlaneClient
     )
+
+if(PLATFORM STREQUAL "x86")
+    # Real wiringPi only runs on a Pi; use the no-op stand-in in platform/x86.
+    target_include_directories(pi-FMC BEFORE PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/platform/x86)
+else()
+    target_link_libraries(pi-FMC wiringPi)
+endif()
 
 
     install(TARGETS pi-FMC RUNTIME)

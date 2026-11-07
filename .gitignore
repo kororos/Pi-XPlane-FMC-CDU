@@ -57,3 +57,5 @@ include/*
 lib/*
 bin/*
 test/test_runner
+# out-of-source build folders
+build-*/
