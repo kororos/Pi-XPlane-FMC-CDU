@@ -59,7 +59,8 @@ public:
 		LED_MSG = 14, 	// p.3 bcm.11
 		LED_DSPY = 21,	// p.29 bcm.5
 		LED_OFST = 22, 	// p.31 bcm.6
-		LED_FAIL = 23	// p.33 bcm.13
+		LED_FAIL = 23,	// p.33 bcm.13
+		LED_BG = 24	// p.35 bcm.19 (keypad backlight)
 	};
 
 

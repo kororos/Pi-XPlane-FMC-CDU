@@ -42,17 +42,18 @@ MainFMC::MainFMC() {
 }
 
 MainFMC::~MainFMC() {
-
+	LEDs::getInstance()->setLED(LEDs::LED_BG, 0);
 }
 
 void MainFMC::init() {
 	Screen::getInstance()->initialize(numCols);
 	refreshDisplay();
 	LEDs::getInstance()->setAllLEDs(0);
+	LEDs::getInstance()->setLED(LEDs::LED_BG, 1);
 }
 
 void MainFMC::deInit() {
-
+	LEDs::getInstance()->setLED(LEDs::LED_BG, 0);
 }
 
 void MainFMC::XPlaneBeaconListenerHandler(
@@ -193,6 +194,7 @@ void MainFMC::keyPressEvent(int row, int col) {
 	// LSK6, "Exit"
 	else if (row == 6 && col == 1) {
 		syslog(LOG_INFO, "EXIT requested");
+		LEDs::getInstance()->setLED(LEDs::LED_BG, 0);
 		Screen::getInstance()->quitLoop();
 
 	}

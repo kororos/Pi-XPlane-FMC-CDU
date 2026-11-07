@@ -35,12 +35,14 @@ LEDs::LEDs() {
 	pinMode(LED_FAIL, OUTPUT);
 	pinMode(LED_MSG, OUTPUT);
 	pinMode(LED_OFST, OUTPUT);
+	pinMode(LED_BG, OUTPUT);
 
 	digitalWrite(LED_EXEC, 1);
 	digitalWrite(LED_DSPY, 1);
 	digitalWrite(LED_FAIL, 1);
 	digitalWrite(LED_MSG, 1);
 	digitalWrite(LED_OFST, 1);
+	digitalWrite(LED_BG, 1);
 
 	sleep(1);
 
@@ -59,12 +61,14 @@ LEDs::~LEDs() {
 	digitalWrite(LED_FAIL, 0);
 	digitalWrite(LED_MSG, 0);
 	digitalWrite(LED_OFST, 0);
+	digitalWrite(LED_BG, 0);
 
 	pinMode(LED_EXEC, INPUT);
 	pinMode(LED_DSPY, INPUT);
 	pinMode(LED_FAIL, INPUT);
 	pinMode(LED_MSG, INPUT);
 	pinMode(LED_OFST, INPUT);
+	pinMode(LED_BG, INPUT);
 }
 
 void LEDs::setLED(LEDs::LedTypes led, bool on) {
@@ -79,4 +83,5 @@ void LEDs::setAllLEDs(bool on) {
 	setLED(LED_FAIL, on);
 	setLED(LED_MSG, on);
 	setLED(LED_OFST, on);
+	setLED(LED_BG, on);
 }

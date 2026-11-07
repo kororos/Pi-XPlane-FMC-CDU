@@ -123,6 +123,7 @@ void ZiboFMC::init() {
 	Screen::getInstance()->initialize(24);
 	Screen::getInstance()->clearScreen();
 	LEDs::getInstance()->setAllLEDs(0);
+	LEDs::getInstance()->setLED(LEDs::LED_BG, 1);
 	subscribeDataRefs();
 }
 
