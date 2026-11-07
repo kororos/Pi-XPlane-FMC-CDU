@@ -200,7 +200,7 @@ void ZiboFMC::subscribeDataRefs() {
 
 	subscribe("laminar/B738/fmc/fmc_message");
 
-	if (side=="0") {
+	if (side=="1") {	// captain = fmc1; side is "1" or "2", never "0"
 		subscribe("laminar/B738/indicators/fmc_exec_lights");
 	} else {
 		subscribe("laminar/B738/indicators/fmc_exec_lights_fo");
@@ -255,7 +255,7 @@ void ZiboFMC::deInit () {
 
 	unsubscribe("laminar/B738/fmc/fmc_message");
 
-	if (side=="0") {
+	if (side=="1") {	// captain = fmc1; side is "1" or "2", never "0"
 		unsubscribe("laminar/B738/indicators/fmc_exec_lights");
 	} else {
 		unsubscribe("laminar/B738/indicators/fmc_exec_lights_fo");
