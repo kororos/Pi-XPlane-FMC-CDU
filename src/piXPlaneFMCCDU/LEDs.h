@@ -24,6 +24,8 @@
 #define PIXPLANEFMCCDU_SRC_LEDS_H_
 
 #include <stdlib.h>
+#include <mutex>
+#include <string>
 
 /** @brief Turn On or Off LEDs on the CDU Panel
  *
@@ -40,6 +42,20 @@ private:
 
 	// @brief singleton instance
 	static LEDs * instance;
+
+	// Keypad backlight (LED_BG) brightness.
+	// Uses hardware PWM on BCM19 when running as root; otherwise (or on
+	// x86) it can only be on or off.
+	bool hwPwm = false;
+	bool backlightWanted = false;	// FMC code has switched the backlight on
+	int backlightLevel = BACKLIGHT_STEPS;	// user level, 0 (off) .. BACKLIGHT_STEPS
+	int lastNonZeroLevel = BACKLIGHT_STEPS;
+	std::recursive_mutex backlightMutex;
+	std::string levelFile;
+
+	void applyBacklight();
+	void loadBacklightLevel();
+	void saveBacklightLevel();
 
 public:
 
@@ -64,8 +80,19 @@ public:
 	};
 
 
+	static const int BACKLIGHT_STEPS = 16;
+
 	// @brief method to turn an LED on or off.
+	// For LED_BG, "on" means on at the current brightness level.
 	void setLED (LEDs::LedTypes led, bool on);
+
+	// @brief change backlight brightness by delta steps (rotary encoder)
+	void changeBacklight(int delta);
+
+	// @brief toggle backlight between off and the last brightness (encoder push)
+	void toggleBacklight();
+
+	int getBacklightLevel();
 
 	void setAllLEDs (bool on);
 

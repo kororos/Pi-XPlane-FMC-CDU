@@ -38,12 +38,12 @@ RotaryEncScanner * RotaryEncScanner::instance = NULL;
 
 RotaryEncScanner::RotaryEncScanner () {
 
-	count = 0; 
+	detentCount = 0;
 
-	// set rows as inputs, with Pull-UP enabled.
-	for (size_t pin = 0; pin < pinsAB.size(); pin++) {
-		pinMode (pinsAB[pin], INPUT);
-		pullUpDnControl (pinsAB[pin], PUD_UP);
+	// inputs with pull-up enabled (encoder contacts switch to GND)
+	for (int pin : { PIN_A, PIN_B, PIN_SW }) {
+		pinMode (pin, INPUT);
+		pullUpDnControl (pin, PUD_UP);
 	}
 
 	isRunning = false;
@@ -67,56 +67,64 @@ void RotaryEncScanner::launchThread() {
 void RotaryEncScanner::mainLoop() {
 
 	cerr << "In RotaryEncScanner::mainLoop" << endl;
-    int stateA = digitalRead(pinsAB[0]);
-    int stateB = digitalRead(pinsAB[1]);
-	int prevStateA, prevStateB, seq, prevSeq, delta, change, dentedCount;
-    seq = (stateA ^ stateB) | (stateB << 1);
-    prevSeq = seq;
-    isRunning = true;
+
+	// Quadrature decoding with a transition table: index is
+	// (previous state << 2) | new state, where state = (A << 1) | B.
+	// Valid single steps give +1/-1. No change, and "impossible" jumps
+	// where both contacts changed at once (bounce or a missed sample),
+	// give 0, so contact bounce cancels out instead of producing
+	// spurious or reversed steps.
+	static const int table[16] = {
+		 0, -1, +1,  0,
+		+1,  0,  0, -1,
+		-1,  0,  0, +1,
+		 0, +1, -1,  0
+	};
+
+	int state = (digitalRead(PIN_A) << 1) | digitalRead(PIN_B);
+	int accum = 0;
+
+	int swStable = digitalRead(PIN_SW);
+	int swLast = swStable;
+	int swCount = 0;
+
+	isRunning = true;
 	stopRequested = false;
 
-    dentedCount = 0;
 	while (!stopRequested) {
-        prevStateA = stateA; 
-        prevStateB = stateB; 
 
-        stateA = digitalRead(pinsAB[0]);
-        stateB = digitalRead(pinsAB[1]);
-        seq = (stateA ^ stateB) | (stateB << 1);
+		// --- rotation ---
+		int newState = (digitalRead(PIN_A) << 1) | digitalRead(PIN_B);
+		if (newState != state) {
+			accum += table[(state << 2) | newState];
+			state = newState;
 
-        if(seq != prevSeq){
-            //we have movement
-            delta = (seq - prevSeq) % 4;
-            if((delta == 1) || (delta == -3)){
-                //We moved one step clockwise
-                count++;
-                if((count % 2) == 0){
-                    change = 1;
-                    dentedCount++;
-                    cerr << "Dented Count: " << dentedCount << endl;
-                }
-            }else if (delta == 2){
-                //This should not really happen - unless if spinning clockwise too fast
-                cerr << "Moved two steps" << endl;
-            }else if((delta == -1) || (delta == 3)){
-                //We moved one step anti-clockwise
-                count --; 
-                if((count % 2) == 0){
-                    change = -1;
-                    dentedCount--;
-                    cerr << "Dented Count: " << dentedCount << endl;
-                }
-                //cerr << "Count: " << count << endl;
-            }else {
-                //this should not really happen - unless if spinning anti-clockwise too fast
-                cerr << "Delta: " << delta << endl;
-            }
-            prevSeq = seq;
-            FMCManager::getInstance()->rotaryEncTurnEvent(count, change);
-        }
-        // 1 ms is fast enough for a hand-turned encoder and avoids
-        // spinning the CPU (was 100 us).
-        usleep(1000);		
+			if (accum >= TRANSITIONS_PER_DETENT || accum <= -TRANSITIONS_PER_DETENT) {
+				int step = (accum > 0 ? 1 : -1) * DIRECTION;
+				accum = 0;
+				detentCount += step;
+				syslog(LOG_INFO, "Rotary encoder %+d (count %d)", step, detentCount);
+				FMCManager::getInstance()->rotaryEncTurnEvent(detentCount, step);
+			}
+		}
+
+		// --- push switch (active low), debounced ---
+		int sw = digitalRead(PIN_SW);
+		if (sw != swLast) {
+			swLast = sw;
+			swCount = 0;
+		} else if (sw != swStable && ++swCount >= SWITCH_DEBOUNCE_MS) {
+			swStable = sw;
+			if (swStable == 0) {
+				syslog(LOG_INFO, "Rotary encoder pressed");
+				FMCManager::getInstance()->rotaryEncPressEvent();
+			}
+		}
+
+		// 1 ms is fast enough for a hand-turned encoder and avoids
+		// spinning the CPU.
+		usleep(1000);
 	}
+
 	cerr << "Finished RotaryEncScanner::mainLoop" << endl;
 }

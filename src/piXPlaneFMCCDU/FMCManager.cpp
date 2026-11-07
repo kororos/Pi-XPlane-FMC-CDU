@@ -26,6 +26,7 @@
 #include <XPlaneBeaconListener.h>
 
 #include "FMCManager.h"
+#include "LEDs.h"
 
 #include "Screen.h"
 #include "Version.h"
@@ -98,8 +99,21 @@ void FMCManager::keyReleaseEvent(int row, int col) {
 	clearKeyPressTime = 0;
 }
 
+// The rotary encoder dims the keypad backlight on every page; FMCs may
+// also react to it.
 void FMCManager::rotaryEncTurnEvent(int count, int delta){
-	currentFMC->rotaryEncTurnEvent(count, delta);
+	LEDs::getInstance()->changeBacklight(delta);
+	if (currentFMC) {
+		currentFMC->rotaryEncTurnEvent(count, delta);
+	}
+}
+
+// Pushing the encoder toggles the backlight off / back on.
+void FMCManager::rotaryEncPressEvent(){
+	LEDs::getInstance()->toggleBacklight();
+	if (currentFMC) {
+		currentFMC->rotaryEncPressEvent();
+	}
 }
 void FMCManager::tick() {
 

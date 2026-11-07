@@ -111,6 +111,7 @@ public:
 	void keyReleaseEvent(int row, int col);
 
 	void rotaryEncTurnEvent(int count, int delta);
+	void rotaryEncPressEvent();
 	/** @brief called once every second by Screen's mainloop
 	 *
 	 */

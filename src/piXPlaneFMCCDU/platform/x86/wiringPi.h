@@ -23,6 +23,10 @@
 
 #define INPUT  0
 #define OUTPUT 1
+#define PWM_OUTPUT 2
+
+#define PWM_MODE_MS  0
+#define PWM_MODE_BAL 1
 
 #define LOW  0
 #define HIGH 1
@@ -39,6 +43,12 @@ inline void digitalWrite(int pin, int value) {
 }
 // Inputs read as "not pressed" (pull-ups) on the PC.
 inline int digitalRead(int) { return HIGH; }
+inline void pwmSetMode(int) {}
+inline void pwmSetRange(unsigned int) {}
+inline void pwmSetClock(int) {}
+inline void pwmWrite(int pin, int value) {
+	std::cerr << "[gpio] pin " << pin << " pwm " << value << std::endl;
+}
 inline void delay(unsigned int ms) { usleep(ms * 1000); }
 inline void delayMicroseconds(unsigned int us) { usleep(us); }
 

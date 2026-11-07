@@ -80,6 +80,7 @@ public:
 	virtual void keyPressEvent (int row, int col) = 0;
 	virtual void keyReleaseEvent (int row, int col) = 0;
 	virtual void rotaryEncTurnEvent(int count, int change) {};
+	virtual void rotaryEncPressEvent() {};
 };
 
 #endif /* PIXPLANEFMCCDU_SRC_ABSTRACTFMC_H_ */

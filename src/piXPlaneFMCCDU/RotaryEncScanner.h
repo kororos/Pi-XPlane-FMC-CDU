@@ -30,7 +30,6 @@ File contributed by Lefteris Kororos <lkororos@gmail.com>
 
 class RotaryEncScanner {
 private:
-    int count;
 	RotaryEncScanner(); // private so it cannot be called
 
 	RotaryEncScanner(RotaryEncScanner const &) {};
@@ -42,18 +41,27 @@ private:
 protected:
 	static RotaryEncScanner * instance;
 
-    // ROTA and ROTB inputs
-    std::vector<int> pinsAB = {
-        28, // p.38 BCM. 20 ROTA
-        25, // p.37 BCM. 26 ROTB
-    };
+	// Alps EC11E18244A5: A, B and the push switch all switch to GND,
+	// so the inputs use pull-ups.
+	static const int PIN_A = 28;	// p.38 BCM.20 ROTA
+	static const int PIN_B = 25;	// p.37 BCM.26 ROTB
+	static const int PIN_SW = 26;	// p.32 BCM.12 push switch
+
+	// Quadrature transitions per detent ("click"). If one click moves the
+	// brightness by two steps, set this to 4; if it takes two clicks per
+	// step, set it to 1.
+	static const int TRANSITIONS_PER_DETENT = 2;
+
+	// Set to -1 to reverse the direction of rotation.
+	static const int DIRECTION = 1;
+
+	// Push switch must be stable this many polls (1 ms each) to count.
+	static const int SWITCH_DEBOUNCE_MS = 20;
+
+	int detentCount;
 
 	bool isRunning;
 	bool stopRequested;
-
-	unsigned int pressedRow;
-	unsigned int pressedCol;
-	bool somethingPressed;
 
 public:
 
