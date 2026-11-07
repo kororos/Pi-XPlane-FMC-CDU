@@ -123,8 +123,8 @@ void ZiboFMC::init() {
 	Screen::getInstance()->initialize(24);
 	Screen::getInstance()->clearScreen();
 	{
-		std::lock_guard<std::mutex> lock(largeLinesMutex);
-		largeLines.clear();
+		std::lock_guard<std::mutex> lock(lineMutex);
+		lineParts.clear();
 	}
 	LEDs::getInstance()->setAllLEDs(0);
 	LEDs::getInstance()->setLED(LEDs::LED_BG, 1);
@@ -144,124 +144,60 @@ void ZiboFMC::unsubscribe(std::string dataref) {
 	FMCManager::getInstance()->unsubscribeDataRef(dataref);
 }
 
+// All the parts of the Zibo CDU screen we use:
+//   LineNN_L  large line (base)          LineNN_X  small line (base)
+//   LineNN_S  small font on large line   LineNN_LX white text on small line
+//   LineNN_I  "inverse" text, e.g. LEGS  LineNN_GX green text on small line
+//             waypoint names
+//   LineNN_M  magenta, LineNN_G green    Line00_C  title, Line04_SI
+//   Line_entry scratchpad, Line_entry_I
+std::vector<std::string> ZiboFMC::lineDatarefs() {
+
+	std::vector<std::string> refs;
+	std::string base = "laminar/B738/fmc" + side + "/";
+	char buf[8];
+	for (int n = 0; n <= 6; n++) {
+		snprintf(buf, sizeof(buf), "Line%02d_", n);
+		for (const char * part : { "L", "S", "I", "M", "G" }) {
+			refs.push_back(base + buf + part);
+		}
+		if (n > 0) {
+			for (const char * part : { "X", "LX", "GX" }) {
+				refs.push_back(base + buf + part);
+			}
+		}
+	}
+	refs.push_back(base + "Line00_C");
+	refs.push_back(base + "Line04_SI");
+	refs.push_back(base + "Line_entry");
+	refs.push_back(base + "Line_entry_I");
+	return refs;
+}
+
+std::string ZiboFMC::execLightDataref() {
+	// captain = fmc1; side is "1" or "2", never "0"
+	return side == "1" ? "laminar/B738/indicators/fmc_exec_lights"
+			: "laminar/B738/indicators/fmc_exec_lights_fo";
+}
+
 void ZiboFMC::subscribeDataRefs() {
 
 	// These are the datarefs that we need when we're active.
-
-	// L = Large Lines, including Page Label (maps to even line numbers)
-	// X = Small Lines (maps to odd line numbers)
-	// S = small font on Large Lines
-
-	subscribe("laminar/B738/fmc" + side + "/Line00_L");
-	subscribe("laminar/B738/fmc" + side + "/Line00_S");
-
-	subscribe("laminar/B738/fmc" + side + "/Line01_X");
-	subscribe("laminar/B738/fmc" + side + "/Line02_X");
-	subscribe("laminar/B738/fmc" + side + "/Line03_X");
-	subscribe("laminar/B738/fmc" + side + "/Line04_X");
-	subscribe("laminar/B738/fmc" + side + "/Line05_X");
-	subscribe("laminar/B738/fmc" + side + "/Line06_X");
-
-	subscribe("laminar/B738/fmc" + side + "/Line01_L");
-	subscribe("laminar/B738/fmc" + side + "/Line02_L");
-	subscribe("laminar/B738/fmc" + side + "/Line03_L");
-	subscribe("laminar/B738/fmc" + side + "/Line04_L");
-	subscribe("laminar/B738/fmc" + side + "/Line05_L");
-	subscribe("laminar/B738/fmc" + side + "/Line06_L");
-
-	subscribe("laminar/B738/fmc" + side + "/Line01_I");
-	subscribe("laminar/B738/fmc" + side + "/Line02_I");
-	subscribe("laminar/B738/fmc" + side + "/Line03_I");
-	subscribe("laminar/B738/fmc" + side + "/Line04_I");
-	subscribe("laminar/B738/fmc" + side + "/Line05_I");
-	subscribe("laminar/B738/fmc" + side + "/Line06_I");
-
-	subscribe("laminar/B738/fmc" + side + "/Line01_S");
-	subscribe("laminar/B738/fmc" + side + "/Line02_S");
-	subscribe("laminar/B738/fmc" + side + "/Line03_S");
-	subscribe("laminar/B738/fmc" + side + "/Line04_S");
-	subscribe("laminar/B738/fmc" + side + "/Line05_S");
-	subscribe("laminar/B738/fmc" + side + "/Line06_S");
-
-	subscribe("laminar/B738/fmc" + side + "/Line01_G");
-	subscribe("laminar/B738/fmc" + side + "/Line02_G");
-	subscribe("laminar/B738/fmc" + side + "/Line03_G");
-	subscribe("laminar/B738/fmc" + side + "/Line04_G");
-	subscribe("laminar/B738/fmc" + side + "/Line05_G");
-	subscribe("laminar/B738/fmc" + side + "/Line06_G");
-
-	subscribe("laminar/B738/fmc" + side + "/Line01_M");
-	subscribe("laminar/B738/fmc" + side + "/Line02_M");
-	subscribe("laminar/B738/fmc" + side + "/Line03_M");
-	subscribe("laminar/B738/fmc" + side + "/Line04_M");
-	subscribe("laminar/B738/fmc" + side + "/Line05_M");
-	subscribe("laminar/B738/fmc" + side + "/Line06_M");
-	subscribe("laminar/B738/fmc" + side + "/Line_entry");
-
-	subscribe("laminar/B738/fmc/fmc_message");
-
-	if (side=="1") {	// captain = fmc1; side is "1" or "2", never "0"
-		subscribe("laminar/B738/indicators/fmc_exec_lights");
-	} else {
-		subscribe("laminar/B738/indicators/fmc_exec_lights_fo");
+	for (const std::string & ref : lineDatarefs()) {
+		subscribe(ref);
 	}
-
+	subscribe("laminar/B738/fmc/fmc_message");
+	subscribe(execLightDataref());
 }
 
 
 void ZiboFMC::deInit () {
 
-
-	unsubscribe("laminar/B738/fmc" + side + "/Line00_L");
-	unsubscribe("laminar/B738/fmc" + side + "/Line00_S");
-
-	unsubscribe("laminar/B738/fmc" + side + "/Line01_X");
-	unsubscribe("laminar/B738/fmc" + side + "/Line02_X");
-	unsubscribe("laminar/B738/fmc" + side + "/Line03_X");
-	unsubscribe("laminar/B738/fmc" + side + "/Line04_X");
-	unsubscribe("laminar/B738/fmc" + side + "/Line05_X");
-	unsubscribe("laminar/B738/fmc" + side + "/Line06_X");
-
-	unsubscribe("laminar/B738/fmc" + side + "/Line01_L");
-	unsubscribe("laminar/B738/fmc" + side + "/Line02_L");
-	unsubscribe("laminar/B738/fmc" + side + "/Line03_L");
-	unsubscribe("laminar/B738/fmc" + side + "/Line04_L");
-	unsubscribe("laminar/B738/fmc" + side + "/Line05_L");
-	unsubscribe("laminar/B738/fmc" + side + "/Line06_L");
-	unsubscribe("laminar/B738/fmc" + side + "/Line01_I");
-	unsubscribe("laminar/B738/fmc" + side + "/Line02_I");
-	unsubscribe("laminar/B738/fmc" + side + "/Line03_I");
-	unsubscribe("laminar/B738/fmc" + side + "/Line04_I");
-	unsubscribe("laminar/B738/fmc" + side + "/Line05_I");
-	unsubscribe("laminar/B738/fmc" + side + "/Line06_I");
-	unsubscribe("laminar/B738/fmc" + side + "/Line01_S");
-	unsubscribe("laminar/B738/fmc" + side + "/Line02_S");
-	unsubscribe("laminar/B738/fmc" + side + "/Line03_S");
-	unsubscribe("laminar/B738/fmc" + side + "/Line04_S");
-	unsubscribe("laminar/B738/fmc" + side + "/Line05_S");
-	unsubscribe("laminar/B738/fmc" + side + "/Line06_S");
-	unsubscribe("laminar/B738/fmc" + side + "/Line01_G");
-	unsubscribe("laminar/B738/fmc" + side + "/Line02_G");
-	unsubscribe("laminar/B738/fmc" + side + "/Line03_G");
-	unsubscribe("laminar/B738/fmc" + side + "/Line04_G");
-	unsubscribe("laminar/B738/fmc" + side + "/Line05_G");
-	unsubscribe("laminar/B738/fmc" + side + "/Line06_G");
-	unsubscribe("laminar/B738/fmc" + side + "/Line01_M");
-	unsubscribe("laminar/B738/fmc" + side + "/Line02_M");
-	unsubscribe("laminar/B738/fmc" + side + "/Line03_M");
-	unsubscribe("laminar/B738/fmc" + side + "/Line04_M");
-	unsubscribe("laminar/B738/fmc" + side + "/Line05_M");
-	unsubscribe("laminar/B738/fmc" + side + "/Line06_M");
-
-	unsubscribe("laminar/B738/fmc/fmc_message");
-
-	if (side=="1") {	// captain = fmc1; side is "1" or "2", never "0"
-		unsubscribe("laminar/B738/indicators/fmc_exec_lights");
-	} else {
-		unsubscribe("laminar/B738/indicators/fmc_exec_lights_fo");
+	for (const std::string & ref : lineDatarefs()) {
+		unsubscribe(ref);
 	}
-
-
+	unsubscribe("laminar/B738/fmc/fmc_message");
+	unsubscribe(execLightDataref());
 }
 
 void ZiboFMC::keyPressEvent(int row, int col) {
@@ -292,26 +228,24 @@ static bool hasText(const std::string & s) {
 	return s.find_first_not_of(' ') != std::string::npos;
 }
 
-void ZiboFMC::redrawLargeLine(int zline) {
+// Redraw one screen line from its stored parts: the base part first
+// (spaces erase), then each overlay in order (spaces are transparent).
+// Caller holds lineMutex.
+void ZiboFMC::redrawLine(int screenLine, const std::string & basePart,
+		const std::vector<std::pair<std::string, char>> & overlays) {
 
-	const LargeLine & ll = largeLines[zline];
-	int line = zline * 2;
+	std::map<std::string, std::string> & parts = lineParts[screenLine];
 
-	// base line: zibo sends " " when it means clear the entire line,
-	// so pad to full width; spaces erase.
-	std::string base = ll.base;
+	// zibo sends " " when it means clear the entire line, so pad to full width
+	std::string base = parts[basePart];
 	base.resize(24, ' ');
-	Screen::getInstance()->drawLine(0, line, base);
+	Screen::getInstance()->drawLine(0, screenLine, base);
 
-	// overlays: spaces are transparent
-	if (hasText(ll.small)) {
-		Screen::getInstance()->drawLine(0, line, ll.small, false);
-	}
-	if (hasText(ll.magenta)) {
-		Screen::getInstance()->drawLine(0, line, ll.magenta, false, 'M');
-	}
-	if (hasText(ll.green)) {
-		Screen::getInstance()->drawLine(0, line, ll.green, false, 'G');
+	for (const auto & ov : overlays) {
+		auto it = parts.find(ov.first);
+		if (it != parts.end() && hasText(it->second)) {
+			Screen::getInstance()->drawLine(0, screenLine, it->second, false, ov.second);
+		}
 	}
 }
 
@@ -325,63 +259,51 @@ void ZiboFMC::receiveDataRef(std::string type, std::string dataref,
 	syslog (LOG_INFO, "%s", buf.str().c_str());
 
 
-	regex r("^laminar/B738/fmc" + side + "/Line(\\d+)_(.)$");
+	// Each screen line is built from several parts (see lineDatarefs()).
+	// The Zibo only re-sends the parts that changed, and drawing a base part
+	// erases the row, so keep every part and redraw the whole row whenever
+	// any part changes. Otherwise text in one part (e.g. a green "ON", or
+	// LEGS waypoint names sent in _I) vanishes when another part changes.
+	static const std::vector<std::pair<std::string, char>> largeOverlays = {
+		{ "S", 'W' }, { "I", 'W' }, { "SI", 'W' }, { "C", 'W' }, { "M", 'M' }, { "G", 'G' } };
+	static const std::vector<std::pair<std::string, char>> smallOverlays = {
+		{ "LX", 'W' }, { "GX", 'G' } };
+	static const std::vector<std::pair<std::string, char>> entryOverlays = {
+		{ "I", 'W' } };
+
+	regex r("^laminar/B738/fmc" + side + "/Line(\\d+)_([A-Z]+)$");
 	smatch m;
 	if (regex_match(dataref, m, r)) {
 
-		int line = stoi(m[1]);
-		string size = m[2];
+		int zline = stoi(m[1]);
+		string part = m[2];
 
 		// zibo uses '*' for the square entry box. we don't have that
 		// so we use '_' instead.
 		replace (value.begin(), value.end(), '*', '_');
 
-		/* Zibo has a number of datarefs that apply to every line.
-		 * 	X=Small Lines
-		 * 	L=Large
-		 * 	-->G=Green Text in Large Lines
-		 * 	-->M=Magenta Text in Large Lines
-		 * 	-->I=Inverse Text in Large Lines
-		 * 	-->S=Small Text in Large Lines
-		 */
-
-		// normal small lines
-		if (size == "X") {
-			line = 1 + ((line - 1) * 2);
-			// zibo sends " " when it means clear the entire line
-			value.resize(24, ' ');
-			Screen::getInstance()->drawLine(0, line, value);
+		std::lock_guard<std::mutex> lock(lineMutex);
+		if (part == "X" || part == "LX" || part == "GX") {
+			// small line above large line zline
+			int screenLine = 1 + ((zline - 1) * 2);
+			lineParts[screenLine][part] = value;
+			redrawLine(screenLine, "X", smallOverlays);
+		} else {
+			int screenLine = zline * 2;
+			lineParts[screenLine][part] = value;
+			redrawLine(screenLine, "L", largeOverlays);
 		}
-
-		// Large lines are made of a base line (L) plus overlays (S, M, G)
-		// that only contain the characters they colour. The Zibo only
-		// re-sends the parts that changed, and drawing L erases the row,
-		// so remember every part and redraw the whole row each time any
-		// part changes. Otherwise overlays (e.g. a green "ON") vanish
-		// whenever only the base line is updated.
-		else if (size == "L" || size == "S" || size == "M" || size == "G") {
-			std::lock_guard<std::mutex> lock(largeLinesMutex);
-			LargeLine & ll = largeLines[line];
-			if (size == "L") {
-				ll.base = value;
-			} else if (size == "S") {
-				ll.small = value;
-			} else if (size == "M") {
-				ll.magenta = value;
-			} else {
-				ll.green = value;
-			}
-			redrawLargeLine(line);
-		}
-
 	}
 
-	else if (dataref == "laminar/B738/fmc" + side + "/Line_entry") {
-		value.resize(24, ' ');
-		Screen::getInstance()->drawLine (0, 13, value);
-		cerr << "Line_entry [" << value << "]" << endl;
-
+	else if (dataref == "laminar/B738/fmc" + side + "/Line_entry"
+			|| dataref == "laminar/B738/fmc" + side + "/Line_entry_I") {
+		replace (value.begin(), value.end(), '*', '_');
+		std::lock_guard<std::mutex> lock(lineMutex);
+		bool inv = dataref.compare(dataref.size() - 2, 2, "_I") == 0;
+		lineParts[13][inv ? "I" : "E"] = value;
+		redrawLine(13, "E", entryOverlays);
 	}
+
 
 	else if (dataref == "laminar/B738/indicators/fmc_exec_lights" || dataref == "laminar/B738/indicators/fmc_exec_lights_fo") {
 		LEDs::getInstance()->setLED(LEDs::LED_EXEC, value != "0");

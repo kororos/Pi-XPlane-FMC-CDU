@@ -26,6 +26,8 @@
 
 #include <map>
 #include <mutex>
+#include <vector>
+#include <utility>
 #include <string>
 #include <XPlaneUDPClient.h>
 
@@ -37,14 +39,15 @@ protected:
 	std::string side; // 0 = pilot, 1=first officer
 	std::map<int, std::map<int, std::string>> keyInfo;
 
-	// last received parts of each large line (LineNN_L/_S/_M/_G)
-	struct LargeLine {
-		std::string base, small, magenta, green;
-	};
-	std::map<int, LargeLine> largeLines;
-	std::mutex largeLinesMutex;
+	// last received parts of each screen line: screen line -> part -> text
+	std::map<int, std::map<std::string, std::string>> lineParts;
+	std::mutex lineMutex;
 
-	void redrawLargeLine(int zline);
+	void redrawLine(int screenLine, const std::string & basePart,
+			const std::vector<std::pair<std::string, char>> & overlays);
+
+	std::vector<std::string> lineDatarefs();
+	std::string execLightDataref();
 
 public:
 	ZiboFMC(bool isCaptain);
