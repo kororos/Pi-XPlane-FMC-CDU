@@ -25,6 +25,7 @@
 #define PIXPLANEFMCCDU_SRC_ZIBOFMC_H_
 
 #include <map>
+#include <mutex>
 #include <string>
 #include <XPlaneUDPClient.h>
 
@@ -35,6 +36,15 @@ protected:
 
 	std::string side; // 0 = pilot, 1=first officer
 	std::map<int, std::map<int, std::string>> keyInfo;
+
+	// last received parts of each large line (LineNN_L/_S/_M/_G)
+	struct LargeLine {
+		std::string base, small, magenta, green;
+	};
+	std::map<int, LargeLine> largeLines;
+	std::mutex largeLinesMutex;
+
+	void redrawLargeLine(int zline);
 
 public:
 	ZiboFMC(bool isCaptain);

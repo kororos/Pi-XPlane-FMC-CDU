@@ -122,6 +122,10 @@ void ZiboFMC::init() {
 
 	Screen::getInstance()->initialize(24);
 	Screen::getInstance()->clearScreen();
+	{
+		std::lock_guard<std::mutex> lock(largeLinesMutex);
+		largeLines.clear();
+	}
 	LEDs::getInstance()->setAllLEDs(0);
 	LEDs::getInstance()->setLED(LEDs::LED_BG, 1);
 	subscribeDataRefs();
@@ -284,6 +288,33 @@ void ZiboFMC::keyReleaseEvent(int row, int col) {
 	// do nothing?
 }
 
+static bool hasText(const std::string & s) {
+	return s.find_first_not_of(' ') != std::string::npos;
+}
+
+void ZiboFMC::redrawLargeLine(int zline) {
+
+	const LargeLine & ll = largeLines[zline];
+	int line = zline * 2;
+
+	// base line: zibo sends " " when it means clear the entire line,
+	// so pad to full width; spaces erase.
+	std::string base = ll.base;
+	base.resize(24, ' ');
+	Screen::getInstance()->drawLine(0, line, base);
+
+	// overlays: spaces are transparent
+	if (hasText(ll.small)) {
+		Screen::getInstance()->drawLine(0, line, ll.small, false);
+	}
+	if (hasText(ll.magenta)) {
+		Screen::getInstance()->drawLine(0, line, ll.magenta, false, 'M');
+	}
+	if (hasText(ll.green)) {
+		Screen::getInstance()->drawLine(0, line, ll.green, false, 'G');
+	}
+}
+
 
 void ZiboFMC::receiveDataRef(std::string type, std::string dataref,
 		std::string value) {
@@ -314,38 +345,33 @@ void ZiboFMC::receiveDataRef(std::string type, std::string dataref,
 		 * 	-->S=Small Text in Large Lines
 		 */
 
-		// normal large lines
-		if (size == "L") {
-			line = (line) * 2;
-			// zibo sends " " when it means clear the entire line
-			value.resize(24, ' ');
-			Screen::getInstance()->drawLine(0, line, value);
-		}
-
 		// normal small lines
-		else if (size == "X") {
+		if (size == "X") {
 			line = 1 + ((line - 1) * 2);
 			// zibo sends " " when it means clear the entire line
 			value.resize(24, ' ');
 			Screen::getInstance()->drawLine(0, line, value);
 		}
 
-		// overlay small font in large line overlay
-		else if (size == "S") {
-			line = (line) * 2;
-			Screen::getInstance()->drawLine(0, line, value, false);
-		}
-
-		// overlay magenta font in large line
-		else if (size == "M") {
-			line = (line) * 2;
-			Screen::getInstance()->drawLine(0, line, value, false, 'M');
-		}
-
-		// overlay green font in large line
-		else if (size == "G") {
-			line = (line) * 2;
-			Screen::getInstance()->drawLine(0, line, value, false, 'G');
+		// Large lines are made of a base line (L) plus overlays (S, M, G)
+		// that only contain the characters they colour. The Zibo only
+		// re-sends the parts that changed, and drawing L erases the row,
+		// so remember every part and redraw the whole row each time any
+		// part changes. Otherwise overlays (e.g. a green "ON") vanish
+		// whenever only the base line is updated.
+		else if (size == "L" || size == "S" || size == "M" || size == "G") {
+			std::lock_guard<std::mutex> lock(largeLinesMutex);
+			LargeLine & ll = largeLines[line];
+			if (size == "L") {
+				ll.base = value;
+			} else if (size == "S") {
+				ll.small = value;
+			} else if (size == "M") {
+				ll.magenta = value;
+			} else {
+				ll.green = value;
+			}
+			redrawLargeLine(line);
 		}
 
 	}
