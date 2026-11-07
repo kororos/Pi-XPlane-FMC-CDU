@@ -32,10 +32,10 @@ using namespace std;
 
 enum LedTypes
 	: int {
-	LED_EXEC = 13,	// p.21 bcm.9
+	LED_EXEC = 22,	// p.31 bcm.6 (swapped with OFST)
 	LED_MSG = 14, 	// p.3 bcm.11
 	LED_DSPY = 21,	// p.29 bcm.5
-	LED_OFST = 22, 	// p.31 bcm.6
+	LED_OFST = 13, 	// p.21 bcm.9 (swapped with EXEC)
 	LED_FAIL = 23,	// p.33 bcm.13
 	LED_BACK = 24   
 };

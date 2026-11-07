@@ -71,10 +71,10 @@ public:
 
 	// @brief mapping of LEDs and the WiringPi GPIO they connect to
 	enum LedTypes : int {
-		LED_EXEC = 13,	// p.21 bcm.9
+		LED_EXEC = 22,	// p.31 bcm.6  (was 13; swapped with OFST, the EXEC LED on 13 is too dim)
 		LED_MSG = 14, 	// p.3 bcm.11
 		LED_DSPY = 21,	// p.29 bcm.5
-		LED_OFST = 22, 	// p.31 bcm.6
+		LED_OFST = 13, 	// p.21 bcm.9  (was 22; swapped with EXEC)
 		LED_FAIL = 23,	// p.33 bcm.13
 		LED_BG = 24	// p.35 bcm.19 (keypad backlight)
 	};
